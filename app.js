@@ -6,6 +6,14 @@ const cookieParser       = require('cookie-parser');
 const bodyParser         = require('body-parser');
 const expressLayouts     = require('express-ejs-layouts');
 const mongoose           = require('mongoose');
+const passport           = require('passport');
+const session            = require('express-session');
+const MongoStore         = require('connect-mongo')(session);
+const index				 = require('./routes/index');
+const authentication 	 = require('./routes/authentication');
+const LocalStrategy      = require('passport-local').Strategy;
+const User               = require('./models/user');
+const bcrypt             = require('bcrypt');
 
 mongoose.connect('mongodb://localhost:27017/ironfunds-development');
 
@@ -17,6 +25,61 @@ app.set('view engine', 'ejs');
 app.set('layout', 'layouts/main-layout');
 app.use(expressLayouts);
 
+app.use(session({
+	secret: 'ironfundingdev',
+	resave: false,
+	saveUninitialized: true,
+	store: new MongoStore( { mongooseConnection: mongoose.connection })
+}));
+
+// NEW
+passport.serializeUser((user, cb) => {
+	cb(null, user.id);
+});
+
+passport.deserializeUser((id, cb) => {
+	User.findById(id, (err, user) => {
+		if (err) { return cb(err); }
+		cb(null, user);
+	});
+});
+
+// Signing Up
+passport.use('local-signup', new LocalStrategy(
+	{ passReqToCallback: true },
+	(req, username, password, next) => {
+		// To avoid race conditions
+		process.nextTick(() => {
+			User.findOne({
+				'username': username
+			}, (err, user) => {
+				if (err){ return next(err); }
+
+				if (user) {
+					return next(null, false);
+				} else {
+					// Destructure the body
+					const { username, email, description, password } = req.body;
+					const hashPass = bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
+					const newUser = new User({
+						username,
+						email,
+						description,
+						password: hashPass
+					});
+
+					newUser.save((err) => {
+						if (err){ next(err); }
+						return next(null, newUser);
+					});
+				}
+			});
+		});
+	}));
+// NEW
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
@@ -26,6 +89,15 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use('/bower_components', express.static(path.join(__dirname, 'bower_components/')))
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({
+	secret: 'ironfundingdev',
+	resave: false,
+	saveUninitialized: true,
+	store: new MongoStore( { mongooseConnection: mongoose.connection })
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use( (req, res, next) => {
 	if (typeof(req.user) !== "undefined"){
@@ -36,8 +108,9 @@ app.use( (req, res, next) => {
 	next();
 });
 
-const index = require('./routes/index');
+
 app.use('/', index);
+app.use('./authentication', index);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
@@ -55,6 +128,29 @@ app.use((err, req, res, next) => {
 	// render the error page
 	res.status(err.status || 500);
 	res.render('error');
+});
+
+router.get('/login', ensureLoggedOut(), (req, res) => {
+	res.render('authentication/login');
+});
+
+router.post('/login', ensureLoggedOut(), passport.authenticate('local-login', {
+	successRedirect : '/',
+	failureRedirect : '/login'
+}));
+
+router.get('/signup', ensureLoggedOut(), (req, res) => {
+	res.render('authentication/signup');
+});
+
+router.post('/signup', ensureLoggedOut(), passport.authenticate('local-signup', {
+	successRedirect : '/',
+	failureRedirect : '/signup'
+}));
+
+router.post('/logout', ensureLoggedIn('/login'), (req, res) => {
+	req.logout();
+	res.redirect('/');
 });
 
 module.exports = app;
