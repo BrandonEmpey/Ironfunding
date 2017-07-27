@@ -1,3 +1,4 @@
+
 const express            = require('express');
 const path               = require('path');
 const favicon            = require('serve-favicon');
@@ -14,6 +15,7 @@ const authentication 	 = require('./routes/authentication');
 const LocalStrategy      = require('passport-local').Strategy;
 const User               = require('./models/user');
 const bcrypt             = require('bcrypt');
+const { ensureLoggedIn, ensureLoggedOut } = require('connect-ensure-login');
 
 mongoose.connect('mongodb://localhost:27017/ironfunds-development');
 
@@ -110,7 +112,7 @@ app.use( (req, res, next) => {
 
 
 app.use('/', index);
-app.use('./authentication', index);
+app.use('/authentication', authentication);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
@@ -130,27 +132,5 @@ app.use((err, req, res, next) => {
 	res.render('error');
 });
 
-router.get('/login', ensureLoggedOut(), (req, res) => {
-	res.render('authentication/login');
-});
-
-router.post('/login', ensureLoggedOut(), passport.authenticate('local-login', {
-	successRedirect : '/',
-	failureRedirect : '/login'
-}));
-
-router.get('/signup', ensureLoggedOut(), (req, res) => {
-	res.render('authentication/signup');
-});
-
-router.post('/signup', ensureLoggedOut(), passport.authenticate('local-signup', {
-	successRedirect : '/',
-	failureRedirect : '/signup'
-}));
-
-router.post('/logout', ensureLoggedIn('/login'), (req, res) => {
-	req.logout();
-	res.redirect('/');
-});
 
 module.exports = app;
