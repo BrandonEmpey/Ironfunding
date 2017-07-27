@@ -12,6 +12,7 @@ const session            = require('express-session');
 const MongoStore         = require('connect-mongo')(session);
 const index				 = require('./routes/index');
 const authentication 	 = require('./routes/authentication');
+const campaigns		 	 = require('./routes/campaigns');
 const LocalStrategy      = require('passport-local').Strategy;
 const User               = require('./models/user');
 const bcrypt             = require('bcrypt');
@@ -89,7 +90,7 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use('/bower_components', express.static(path.join(__dirname, 'bower_components/')))
+app.use('/bower_components', express.static(path.join(__dirname, 'bower_components/')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
 	secret: 'ironfundingdev',

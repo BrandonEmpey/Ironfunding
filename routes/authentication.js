@@ -3,9 +3,9 @@ const passport           = require('passport');
 const { ensureLoggedIn, ensureLoggedOut } = require('connect-ensure-login');
 
 
-const router = express.Router();
+const router 		 	 = express.Router();
 
-router.get('/login', ensureLoggedOut(), (req, res) => {
+router.get('/login', ensureLoggedOut("/"), (req, res) => {
 	res.render('authentication/login');
 });
 
@@ -13,6 +13,7 @@ router.post('/login', ensureLoggedOut(), passport.authenticate('local-login', {
 	successRedirect : '/',
 	failureRedirect : '/login'
 }));
+
 
 router.get('/signup', ensureLoggedOut(), (req, res) => {
 	res.render('authentication/signup');
